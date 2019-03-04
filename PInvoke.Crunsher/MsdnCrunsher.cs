@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -11,19 +12,21 @@ using System.Xml.Linq;
 
 using Newtonsoft.Json.Linq;
 
-using PInvoke.Common;
+using PInvoke.Common.Models;
+using PInvoke.Common.Serialization;
 
 namespace PInvoke.Crunsher
 {
-    using Type = Common.Type;
-    using Enum = Common.Enum;
+    using Type = Common.Models.Type;
 
     internal class MsdnCrunsher
     {
-        public static void DoWork()
+        public static void DoWork(string libraryDirectory, string outputDirectory)
         {
-            string libraryDirectory = @"D:\Temp\MSDN\EN-US";
-            string[] libraryFiles = Directory.GetFiles(libraryDirectory, "*.mshc").Take(1).ToArray();
+            string[] libraryFiles = Directory.GetFiles(libraryDirectory, "*.mshc").ToArray();
+
+            if (Debugger.IsAttached)
+                libraryFiles = libraryFiles.Take(1).ToArray();
 
             int totalFileCount = 0;
             int crunshedFileCount = 0;
@@ -66,7 +69,7 @@ namespace PInvoke.Crunsher
             {
                 XNamespace w3 = XNamespace.Get("http://www.w3.org/1999/xhtml");
 
-                Regex methodRegex = new Regex(@"(?<ReturnType>.+)\s+(?<Name>[a-z0-9_\*\-\+\/=^\[\]~<>!\*&]+)\((?:\s*(?<ParameterType>[^,;\)]+\s+\**)(?<ParameterName>[^,\)\s]+)\s*[,\)])*", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                Regex methodRegex = new Regex(@"(?<Type>.+)\s+(?<Name>[a-zA-Z0-9_\*\-\+\/=^\[\]~<>!\*&]+)\((?:\s*(?<Parameter>[^,;]+)\s*[,\)])*", RegexOptions.Compiled);
                 Regex enumRegex = new Regex(@"(?<AlternativeType>[a-z0-9_]+)\s*\{(?:\s*(?<Name>[a-z0-9_]+)(?:\s*=\s*(?<Value>[^,\}]+))?\s*[,\}])+\s+(?<Type>[^;]+)?", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
                 Regex tagRegex = new Regex(@"<[^>]+>", RegexOptions.Compiled);
@@ -80,6 +83,13 @@ namespace PInvoke.Crunsher
                         Interlocked.Increment(ref crunshedFileCount);
 
                         XDocument document = XDocument.Parse(fileContent);
+
+                        XElement headElement = document.Root
+                            .Descendants(w3 + "Title")
+                            .FirstOrDefault();
+
+                        if (headElement.Value.EndsWith(" macro"))
+                            continue;
 
                         XElement contentElement = document.Root
                             .Element(w3 + "body")
@@ -237,7 +247,15 @@ namespace PInvoke.Crunsher
 
                         libraryName = parenthesisRegex.Replace(libraryName, "");
 
-                        Library library = libraries.GetOrAdd(libraryName, x => new Library() { Name = libraryName });
+                        Library library = libraries.GetOrAdd(libraryName, x => new Library()
+                        {
+                            Name = libraryName,
+                            Enumerations = new ConcurrentBag<Enumeration>(),
+                            Methods = new ConcurrentBag<Method>()
+                        });
+
+                        ConcurrentBag<Enumeration> enumerations = library.Enumerations as ConcurrentBag<Enumeration>;
+                        ConcurrentBag<Method> methods = library.Methods as ConcurrentBag<Method>;
 
                         // Process syntax
                         string syntax = string.Join(Environment.NewLine, syntaxNodes.OfType<XElement>().Select(n => n.Value));
@@ -254,17 +272,21 @@ namespace PInvoke.Crunsher
                             if (string.IsNullOrEmpty(enumName))
                                 enumName = enumMatch.Groups["AlternativeType"].Value;
 
-                            Dictionary<string, string> values = enumMatch.Groups["Name"].Captures
-                                .Select((n, i) => new { Name = n.Value, Value = i < enumMatch.Groups["Value"].Captures.Count ? enumMatch.Groups["Value"].Captures[i].Value : null })
-                                .ToDictionary(n => n.Name, n => n.Value);
+                            EnumerationValue[] values = enumMatch.Groups["Name"].Captures
+                                .Select((n, i) => new EnumerationValue()
+                                {
+                                    Name = n.Value,
+                                    Value = i < enumMatch.Groups["Value"].Captures.Count ? enumMatch.Groups["Value"].Captures[i].Value : null
+                                })
+                                .ToArray();
 
-                            Enum enumeration = new Enum()
+                            Enumeration enumeration = new Enumeration()
                             {
                                 Name = enumName,
                                 Values = values
                             };
 
-                            library.Enums.Add(enumeration);
+                            enumerations.Add(enumeration);
                         }
                         else if (syntax.StartsWith("typedef struct ") || syntax.StartsWith("struct "))
                         {
@@ -278,22 +300,44 @@ namespace PInvoke.Crunsher
                             if (!methodMatch.Success)
                                 methodMatch.ToString();
 
-                            Parameter[] parameters = methodMatch.Groups["ParameterName"].Captures
-                                .Select((p, i) => new Parameter()
+                            Parameter[] parameters = methodMatch.Groups["Parameter"].Captures
+                                .Select((p, i) =>
                                 {
-                                    ParameterType = new Type() { Name = methodMatch.Groups["ParameterType"].Captures[i].Value.Trim() },
-                                    Name = p.Value
+                                    string parameter = p.Value.Trim();
+                                    if (string.IsNullOrWhiteSpace(parameter))
+                                        return null;
+
+                                    if (parameter.EndsWith("OPTIONAL", StringComparison.InvariantCultureIgnoreCase))
+                                        parameter = parameter.Remove(parameter.Length - 8).Trim();
+
+                                    int lastSeparator = parameter.LastIndexOfAny(new[] { ' ', '\t', '*' });
+
+                                    string parameterType = lastSeparator == -1 ? parameter : parameter.Remove(lastSeparator);
+                                    string parameterName = lastSeparator == -1 ? "" : parameter.Substring(lastSeparator).Trim();
+
+                                    if (parameterName.Length > 2 && !parameterName.Any(c => char.IsLower(c)))
+                                    {
+                                        parameterType += parameterName;
+                                        parameterName = "";
+                                    }
+
+                                    return new Parameter()
+                                    {
+                                        ParameterType = new ParsedType() { Raw = parameterType.Trim() },
+                                        Name = parameterName == "" ? null : parameterName
+                                    };
                                 })
+                                .Where(p => p != null)
                                 .ToArray();
 
                             Method method = new Method()
                             {
-                                ReturnType = new Type() { Name = methodMatch.Groups["ReturnType"].Value },
+                                ReturnType = new ParsedType() { Raw = methodMatch.Groups["Type"].Value },
                                 Name = methodMatch.Groups["Name"].Value,
                                 Parameters = parameters
                             };
 
-                            library.Methods.Add(method);
+                            methods.Add(method);
 
                             // FIXME: Debug test
                             string test1 = spaceRegex.Replace(syntax, "").TrimEnd(';');
@@ -307,7 +351,11 @@ namespace PInvoke.Crunsher
                 }
             }
 
-            Task[] crunshingTasks = Enumerable.Range(0, 1)//Math.Max(1, Environment.ProcessorCount / 2))
+            int parrallelTaskCount = 1;
+            if (!Debugger.IsAttached)
+                parrallelTaskCount = Math.Max(1, Environment.ProcessorCount / 2);
+
+            Task[] crunshingTasks = Enumerable.Range(0, parrallelTaskCount)
                 .Select(i => crunshingAction())
                 .ToArray();
 
@@ -318,13 +366,17 @@ namespace PInvoke.Crunsher
                 while (!allTasks.IsCompleted)
                 {
                     await Task.Delay(750);
-                    Console.WriteLine($"[MSDN] {crunshedFileCount * 100 / totalFileCount}% - {libraries.Count} libraries, {libraries.Sum(l => l.Value.Methods.Count)} methods, {libraries.Sum(l => l.Value.Enums.Count)} enums");
+
+                    int methodCount = libraries.Sum(l => l.Value.Methods.Count());
+                    int enumerationCount = libraries.Sum(l => l.Value.Enumerations.Count());
+
+                    Console.WriteLine($"[MSDN] {crunshedFileCount * 100 / totalFileCount}% - {libraries.Count} libraries, {methodCount} methods, {enumerationCount} enums");
                 }
             });
 
             allTasks.Wait();
 
-            // Dedup the data
+            // Dedup methods and group variants
             foreach (Library library in libraries.Values)
             {
                 Method[] methods = library.Methods
@@ -333,34 +385,44 @@ namespace PInvoke.Crunsher
                     .Select(g => g.First())
                     .ToArray();
 
+                methods = methods
+                    .GroupBy(m => m.Name.TrimEnd('W').TrimEnd('A'))
+                    .Select(g =>
+                    {
+                        Method[] variantMethods = g
+                            .OrderByDescending(m => m.Name)
+                            .ToArray();
+
+                        if (g.Key != variantMethods[0].Name)
+                        {
+                            return new Method()
+                            {
+                                ReturnType = variantMethods[0].ReturnType,
+                                Name = g.Key,
+                                Parameters = variantMethods[0].Parameters,
+                                Variants = variantMethods
+                            };
+                        }
+                        else
+                            return variantMethods[0];
+                    })
+                    .ToArray();
+
                 library.Methods = new ConcurrentBag<Method>(methods);
             }
 
             // Dump the data
-            JObject[] objects = libraries.Values
-                .AsParallel()
-                .Select(l => new JObject()
-                {
-                    { "Name", l.Name },
-                    { "Enums", new JArray(l.Enums.Select(e => new JObject() {
-                        { "Name", e.Name },
-                        { "Values", new JArray(e.Values.Keys) }
-                    }))},
-                    { "Methods", new JArray(l.Methods.Select(m => new JObject() {
-                        { "Signature", m.ToString() },
-                        { "ReturnType", m.ReturnType.Name },
-                        { "Name", m.Name },
-                        { "Parameters", new JArray(m.Parameters.Select(p => new JObject() {
-                            { "ParameterType", p.ParameterType.Name },
-                            { "Name", p.Name }
-                        }))}
-                    }))}
-                })
-                .OrderBy(l => l["Name"].Value<string>())
-                .ToArray();
+            Source source = new Source()
+            {
+                Name = "MSDN",
+                Libraries = libraries.Values
+            };
 
-            string json = new JArray(objects).ToString();
-            File.WriteAllText("Output.json", json);
+            JObject result = Serializer.Serialize(source);
+            string json = result.ToString();
+
+            string outputPath = Path.Combine(outputDirectory, "Output_MSDN.json");
+            File.WriteAllText(outputPath, json);
         }
     }
 }
