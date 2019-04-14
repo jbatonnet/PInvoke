@@ -19,6 +19,11 @@ namespace PInvoke.Server
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
+#if DEBUG
+                .UseApplicationInsights("00000000-0000-0000-0000-000000000000")
+#else
+                .UseApplicationInsights()
+#endif
                 .UseStartup<Startup>();
     }
 }
