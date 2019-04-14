@@ -24,9 +24,13 @@ namespace PInvoke.Crunsher
         public static void DoWork(string libraryDirectory, string outputDirectory)
         {
             string[] libraryFiles = Directory.GetFiles(libraryDirectory, "*.mshc").ToArray();
+            int parrallelTaskCount = Math.Max(1, Environment.ProcessorCount - 1);
 
             if (Debugger.IsAttached)
-                libraryFiles = libraryFiles.Take(1).ToArray();
+            {
+                //libraryFiles = libraryFiles.Take(1).ToArray();
+                //parrallelTaskCount = 1;
+            }
 
             int totalFileCount = 0;
             int crunshedFileCount = 0;
@@ -71,6 +75,7 @@ namespace PInvoke.Crunsher
 
                 Regex methodRegex = new Regex(@"(?<Type>.+)\s+(?<Name>[a-zA-Z0-9_\*\-\+\/=^\[\]~<>!\*&]+)\((?:\s*(?<Parameter>[^,;]+)\s*[,\)])*", RegexOptions.Compiled);
                 Regex enumRegex = new Regex(@"(?<AlternativeType>[a-z0-9_]+)\s*\{(?:\s*(?<Name>[a-z0-9_]+)(?:\s*=\s*(?<Value>[^,\}]+))?\s*[,\}])+\s+(?<Type>[^;]+)?", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                Regex structRegex = new Regex(@"struct (?<StructTag>[a-z0-9_]+)\s*\{(?:\s+(?<MemberType>.*?\s+\**)(?<MemberName>[a-z0-9_*]+)(?<ArrayInfo>\[[^\]]*\])?;)*\s*\}\s*(?<StructName>[^,;]+)?", RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(2));
 
                 Regex tagRegex = new Regex(@"<[^>]+>", RegexOptions.Compiled);
                 Regex parenthesisRegex = new Regex(@"\([^\)]+\)", RegexOptions.Compiled);
@@ -251,11 +256,13 @@ namespace PInvoke.Crunsher
                         {
                             Name = libraryName,
                             Enumerations = new ConcurrentBag<Enumeration>(),
-                            Methods = new ConcurrentBag<Method>()
+                            Methods = new ConcurrentBag<Method>(),
+                            Structures = new ConcurrentBag<Structure>()
                         });
 
                         ConcurrentBag<Enumeration> enumerations = library.Enumerations as ConcurrentBag<Enumeration>;
                         ConcurrentBag<Method> methods = library.Methods as ConcurrentBag<Method>;
+                        ConcurrentBag<Structure> structures = library.Structures as ConcurrentBag<Structure>;
 
                         // Process syntax
                         string syntax = string.Join(Environment.NewLine, syntaxNodes.OfType<XElement>().Select(n => n.Value));
@@ -290,6 +297,45 @@ namespace PInvoke.Crunsher
                         }
                         else if (syntax.StartsWith("typedef struct ") || syntax.StartsWith("struct "))
                         {
+                            if (syntax.Contains("union"))
+                                continue;
+
+                            Match structMatch;
+
+                            try
+                            {
+                                structMatch = structRegex.Match(syntax);
+                                if (!structMatch.Success && !syntax.Substring(10).Contains("struct"))
+                                    structMatch.ToString();
+                            }
+                            catch
+                            {
+                                continue;
+                            }
+
+                            Field[] fields = structMatch.Groups["MemberName"].Captures
+                                .Select((f, i) =>
+                                {
+                                    string fieldType = structMatch.Groups["MemberType"].Captures[i].Value;
+
+                                    return new Field()
+                                    {
+                                        Name = f.Value,
+                                        Type = new ParsedType() { Raw = fieldType.Trim() },
+                                    };
+                                })
+                                .ToArray();
+
+                            string structName = structMatch.Groups["StructName"].Value;
+                            string structTag = structMatch.Groups["StructTag"].Value;
+
+                            Structure structure = new Structure()
+                            {
+                                Name = string.IsNullOrWhiteSpace(structName) ? structTag : structName,
+                                Fields = fields
+                            };
+
+                            structures.Add(structure);
                         }
                         else if (syntax.StartsWith("typedef union ") || syntax.StartsWith("union "))
                         {
@@ -299,6 +345,11 @@ namespace PInvoke.Crunsher
                             Match methodMatch = methodRegex.Match(syntax);
                             if (!methodMatch.Success)
                                 methodMatch.ToString();
+
+                            if (syntax.Contains("RegisterClassEx"))
+                            {
+
+                            }
 
                             Parameter[] parameters = methodMatch.Groups["Parameter"].Captures
                                 .Select((p, i) =>
@@ -351,10 +402,6 @@ namespace PInvoke.Crunsher
                 }
             }
 
-            int parrallelTaskCount = 1;
-            if (!Debugger.IsAttached)
-                parrallelTaskCount = Math.Max(1, Environment.ProcessorCount / 2);
-
             Task[] crunshingTasks = Enumerable.Range(0, parrallelTaskCount)
                 .Select(i => crunshingAction())
                 .ToArray();
@@ -368,9 +415,10 @@ namespace PInvoke.Crunsher
                     await Task.Delay(750);
 
                     int methodCount = libraries.Sum(l => l.Value.Methods.Count());
+                    int structureCount = libraries.Sum(l => l.Value.Structures.Count());
                     int enumerationCount = libraries.Sum(l => l.Value.Enumerations.Count());
 
-                    Console.WriteLine($"[MSDN] {crunshedFileCount * 100 / totalFileCount}% - {libraries.Count} libraries, {methodCount} methods, {enumerationCount} enums");
+                    Console.WriteLine($"[MSDN] {crunshedFileCount * 100 / totalFileCount}% - {libraries.Count} libraries, {methodCount} methods, {structureCount} structs, {enumerationCount} enums");
                 }
             });
 

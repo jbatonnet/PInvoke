@@ -1,6 +1,5 @@
-﻿using System.Linq;
+﻿using Newtonsoft.Json.Linq;
 
-using Newtonsoft.Json.Linq;
 using PInvoke.Common.Models;
 
 namespace PInvoke.Common.Serialization
@@ -37,7 +36,20 @@ namespace PInvoke.Common.Serialization
 
             return JObject.FromObject(source);
         }
-        public static Source Deserialize(JObject sourceObject)
+        public static JObject Serialize(Method method)
+        {
+            return JObject.FromObject(method);
+        }
+        public static JObject Serialize(Enumeration enumeration)
+        {
+            return JObject.FromObject(enumeration);
+        }
+        public static JObject Serialize(Structure structure)
+        {
+            return JObject.FromObject(structure);
+        }
+
+        public static Source DeserializeSource(JObject sourceObject)
         {
             /*Source result = new Source()
             {
@@ -53,6 +65,10 @@ namespace PInvoke.Common.Serialization
             };*/
 
             return sourceObject.ToObject<Source>();
+        }
+        public static Method DeserializeMethod(JObject methodObject)
+        {
+            return methodObject.ToObject<Method>();
         }
     }
 }

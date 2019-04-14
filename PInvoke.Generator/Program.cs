@@ -5,6 +5,7 @@ using System.Linq;
 
 using Newtonsoft.Json.Linq;
 
+using PInvoke.Common.Generators;
 using PInvoke.Common.Generators.CSharp;
 using PInvoke.Common.Models;
 using PInvoke.Common.Serialization;
@@ -26,26 +27,44 @@ namespace PInvoke.Generator
                 string json = File.ReadAllText(dataFile);
                 JObject sourceObject = JObject.Parse(json);
 
-                Source source = Serializer.Deserialize(sourceObject);
-                sources.Add(source);
+                Source sourceValue = Serializer.DeserializeSource(sourceObject);
+                sources.Add(sourceValue);
             }
 
             // Generate a method
-            const string methodName = "RegisterClassEx";
+            string methodName = "RegisterClassEx";
+
+            Method method = sources
+                .SelectMany(s => s.Libraries)
+                .SelectMany(l => l.Methods)
+                .FirstOrDefault(m => m.Name == methodName);
 
             Library library = sources
                 .SelectMany(s => s.Libraries)
-                .FirstOrDefault(l => l.Methods.Any(m => m.Name == methodName));
+                .First(l => l.Methods.Contains(method));
 
-            Method method = library.Methods
-                .FirstOrDefault(m => m.Name == methodName);
-
-            CSharpMethodGenerator generator = new CSharpMethodGenerator();
-            string result = generator.Generate(library, method);
+            Source source = sources
+                .First(s => s.Libraries.Contains(library));
 
             Console.WriteLine(method);
             Console.WriteLine();
-            Console.WriteLine(result);
+
+            CSharpMethodGenerator methodGenerator = new CSharpMethodGenerator();
+            GenerationResult<Method> methodGenerationResult = methodGenerator.Generate(source, library, method);
+
+            foreach (Structure structure in methodGenerationResult.UsedStructures)
+            {
+                CSharpStructureGenerator structureGenerator = new CSharpStructureGenerator();
+                GenerationResult<Structure> structureGenerationResult = structureGenerator.Generate(source, library, structure);
+
+                Console.WriteLine(structureGenerationResult.Generated);
+                Console.WriteLine();
+            }
+
+            Console.WriteLine(methodGenerationResult.Generated);
+
+            Console.WriteLine();
+
 
             Console.ReadLine();
         }

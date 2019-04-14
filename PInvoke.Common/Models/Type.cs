@@ -114,6 +114,8 @@ namespace PInvoke.Common.Models
             // Pointers
             if (lowerName.EndsWith("*"))
                 return new PointerType() { Target = Parse(name.Remove(name.Length - 1)) };
+            if (lowerName.EndsWith("_ptr"))
+                return new PointerType() { Target = Parse(name.Remove(name.Length - 4)) };
             if (lowerName.StartsWith("*"))
                 return new PointerType() { Target = Parse(name.Substring(1)) };
             if (lowerName.StartsWith("lp"))
@@ -124,9 +126,15 @@ namespace PInvoke.Common.Models
             // Qualifiers
             if (lowerName.StartsWith("in "))
                 return new InType() { Target = Parse(name.Substring(3)) };
+            if (lowerName.StartsWith("_in_ "))
+                return new InType() { Target = Parse(name.Substring(3)) };
             if (lowerName.StartsWith("out "))
                 return new OutType() { Target = Parse(name.Substring(4)) };
+            if (lowerName.StartsWith("_out_ "))
+                return new OutType() { Target = Parse(name.Substring(4)) };
             if (lowerName.StartsWith("inout "))
+                return new InOutType() { Target = Parse(name.Substring(6)) };
+            if (lowerName.StartsWith("_inout_ "))
                 return new InOutType() { Target = Parse(name.Substring(6)) };
 
             // Handles

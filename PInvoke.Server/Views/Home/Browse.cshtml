@@ -1,0 +1,73 @@
+﻿@{
+    ViewData["Title"] = "Browse";
+
+    Source[] sources = ViewData["Sources"] as Source[];
+    Source selectedSource = ViewData["Source"] as Source;
+    Library selectedLibrary = ViewData["Library"] as Library;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="#">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Browse</li>
+    </ol>
+</nav>
+
+<div class="container">
+    <h4 class="mt-3 mb-3">Source</h4>
+    @if (selectedSource == null)
+    {
+        <div class="list-group">
+            @foreach (Source source in sources)
+            {
+                <a asp-route-source="@source.Name" class="list-group-item list-group-item-action">
+                    <strong>@source.Name</strong>
+                    <em>@source.Libraries.Count() libraries, @source.Libraries.Sum(l => l.Methods.Count()) methods, @source.Libraries.Sum(l => l.Enumerations.Count()) enumerations, @source.Libraries.Sum(l => l.Structures.Count()) structures</em>
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <ul class="list-group">
+            <li class="list-group-item">
+                <strong>@selectedSource.Name</strong>
+                <em>@selectedSource.Libraries.Count() libraries, @selectedSource.Libraries.Sum(l => l.Methods.Count()) methods, @selectedSource.Libraries.Sum(l => l.Enumerations.Count()) enumerations, @selectedSource.Libraries.Sum(l => l.Structures.Count()) structures</em>
+            </li>
+        </ul>
+
+        <h4 class="mt-3 mb-3">Library</h4>
+        <div class="list-group">
+            @if (selectedLibrary == null)
+            {
+                @foreach (Library library in selectedSource.Libraries.OrderBy(l => l.Name))
+                {
+                    <a asp-route-source="@selectedSource.Name" asp-route-library="@library.Name" class="list-group-item list-group-item-action">
+                        <strong>@library.Name</strong>
+                        <em>@library.Methods.Count() methods, @library.Enumerations.Count() enumerations, @library.Structures.Count() structures</em>
+                    </a>
+                }
+            }
+            else
+            {
+                <ul class="list-group">
+                    <li class="list-group-item">
+                        <strong>@selectedLibrary.Name</strong>
+                        <em>@selectedLibrary.Methods.Count() methods, @selectedLibrary.Enumerations.Count() enumerations, @selectedLibrary.Structures.Count() structures</em>
+                    </li>
+                </ul>
+
+                <h4 class="mt-3 mb-3">Method</h4>
+                <div class="list-group">
+                    @foreach (Method method in selectedLibrary.Methods.OrderBy(m => m.Name))
+                    {
+                        <a asp-action="Generate" asp-route-source="@selectedSource.Name" asp-route-library="@selectedLibrary.Name" asp-route-element="@method.Name" class="list-group-item list-group-item-action">
+                            <strong>@method.Name</strong>
+                            <em>@method</em>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>

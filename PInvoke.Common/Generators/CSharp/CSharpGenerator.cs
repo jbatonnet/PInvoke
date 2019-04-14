@@ -1,4 +1,8 @@
-﻿using PInvoke.Common.Models;
+﻿using System;
+
+using Newtonsoft.Json.Linq;
+
+using PInvoke.Common.Models;
 
 namespace PInvoke.Common.Generators.CSharp
 {
@@ -25,6 +29,18 @@ namespace PInvoke.Common.Generators.CSharp
         public CSharpEnumerationMode EnumerationMode { get; set; } = CSharpEnumerationMode.Enumerations;
         public bool PreferStringBuilders { get; set; } = false;
 
+        public CSharpGenerator()
+        {
+        }
+        public CSharpGenerator(JObject generationParameters)
+        {
+            Modifier = Enum.TryParse(generationParameters["Modifier"]?.Value<string>() ?? "", out CSharpModifier _modifier) ? _modifier : Modifier;
+            UseFullTypes = generationParameters["UseFullTypes"]?.Value<bool>() ?? UseFullTypes;
+            PointerMode = Enum.TryParse(generationParameters["PointerMode"]?.Value<string>() ?? "", out CSharpPointerMode _pointerMode) ? _pointerMode : PointerMode;
+            EnumerationMode = Enum.TryParse(generationParameters["EnumerationMode"]?.Value<string>() ?? "", out CSharpEnumerationMode _enumerationMode) ? _enumerationMode : EnumerationMode;
+            PreferStringBuilders = generationParameters["PreferStringBuilders"]?.Value<bool>() ?? PreferStringBuilders;
+        }
+
         protected string GetType(ParsedType type)
         {
             return GetTypeInternal(type.Parsed);
@@ -39,7 +55,7 @@ namespace PInvoke.Common.Generators.CSharp
                 .Replace("OUT ", "");
         }
 
-        private string GetTypeInternal(Type type)
+        private string GetTypeInternal(Type type, bool byRef = false)
         {
             switch (type)
             {
@@ -59,7 +75,10 @@ namespace PInvoke.Common.Generators.CSharp
                             if (pointerType.Target is BasicType basicType && basicType.Type == BasicTypeValues.Void)
                                 return UseFullTypes ? "System.IntPtr" : "IntPtr";
 
-                            return "ref " + GetTypeInternal(pointerType.Target);
+                            if (byRef)
+                                return GetTypeInternal(pointerType.Target, true);
+                            else
+                                return "ref " + GetTypeInternal(pointerType.Target, true);
                         }
                     }
 
@@ -99,6 +118,14 @@ namespace PInvoke.Common.Generators.CSharp
                         case BasicTypeValues.Double: return "double";
                     }
                     break;
+
+                case UnknownType unknownType:
+                    {
+                        if (PointerMode == CSharpPointerMode.IntPtr)
+                            return UseFullTypes ? "System.IntPtr" : "IntPtr";
+                        else
+                            return unknownType.Name;
+                    }
             }
 
             return null;

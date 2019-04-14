@@ -8,6 +8,7 @@ namespace PInvoke.Common.Models
 
         public IEnumerable<Method> Methods { get; set; }
         public IEnumerable<Enumeration> Enumerations { get; set; }
+        public IEnumerable<Structure> Structures { get; set; }
 
         public override string ToString() => Name;
     }

@@ -1,0 +1,56 @@
+﻿@{
+    Source source = ViewData["Source"] as Source;
+    Library library = ViewData["Library"] as Library;
+    Method method = ViewData["Method"] as Method;
+    string result = ViewData["Result"] as string;
+
+    ViewData["Title"] = method?.Name ?? "Generate";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="#">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Generate</li>
+    </ol>
+</nav>
+
+<div class="container">
+    <form>
+        <div class="form-group">
+            <label for="name">Source</label>
+            <input class="form-control" type="text" placeholder="@source.Name" readonly>
+        </div>
+        <div class="form-group">
+            <label for="name">Library</label>
+            <input class="form-control" type="text" placeholder="@library.Name" readonly>
+        </div>
+        <div class="form-group">
+            <label for="name">Method</label>
+            <input class="form-control" type="text" placeholder="@method.Name" readonly>
+        </div>
+    </form>
+</div>
+
+<div class="container mt-4">
+    <h3 class="mb-4">Original</h3>
+
+    <div class="card text-white bg-dark">
+        <div class="card-body">
+            <p class="card-text">
+                <pre class="text-white">@method</pre>
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <h3 class="mb-4">Result</h3>
+
+    <div class="card text-white bg-dark">
+        <div class="card-body">
+            <p class="card-text">
+                <pre class="text-white">@result</pre>
+            </p>
+        </div>
+    </div>
+</div>

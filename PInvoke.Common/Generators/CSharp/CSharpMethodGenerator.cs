@@ -1,18 +1,29 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 
+using Newtonsoft.Json.Linq;
+
+using PInvoke.Common.Models;
+
 namespace PInvoke.Common.Generators.CSharp
 {
-    using System.Collections.Generic;
-
-    using Models;
-
     public class CSharpMethodGenerator : CSharpGenerator<Method>
     {
         public bool UseLowerCaseLibrary { get; set; } = true;
         public bool UseLibraryExtension { get; set; } = true;
         public bool SetLastError { get; set; } = true;
+
+        public CSharpMethodGenerator()
+        {
+        }
+        public CSharpMethodGenerator(JObject generationParameters) : base(generationParameters)
+        {
+            UseLowerCaseLibrary = generationParameters["UseLowerCaseLibrary"]?.Value<bool>() ?? UseLowerCaseLibrary;
+            UseLibraryExtension = generationParameters["UseLibraryExtension"]?.Value<bool>() ?? UseLibraryExtension;
+            SetLastError = generationParameters["SetLastError"]?.Value<bool>() ?? SetLastError;
+        }
 
         public override string Generate(Library library, Method method)
         {
@@ -78,7 +89,7 @@ namespace PInvoke.Common.Generators.CSharp
 
             result.AppendLine(");");
 
-            return result.ToString();
+            return result.ToString().TrimEnd();
         }
     }
 }
