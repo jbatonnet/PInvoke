@@ -1,11 +1,13 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-
+using System.Text;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 using PInvoke.Common.Models;
 using PInvoke.Common.Serialization;
+using PInvoke.Server.Model;
 
 namespace PInvoke.Server.Services
 {
@@ -23,6 +25,14 @@ namespace PInvoke.Server.Services
             // Load all sources
             foreach (string dataFile in dataFiles)
             {
+                Stream stream = new FileStream(dataFile, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                TextReader textReader = new StreamReader(stream, Encoding.UTF8, true, 4096, true);
+                JsonReader jsonReader = new JsonTextReader(textReader);
+
+                SourceInfo sourceInfo = new SourceInfo(stream, jsonReader);
+
+
                 string json = File.ReadAllText(dataFile);
                 JObject sourceObject = JObject.Parse(json);
 
@@ -31,6 +41,7 @@ namespace PInvoke.Server.Services
             }
 
             Sources = sources.Where(s => s.Libraries.Any());
+
         }
     }
 }
