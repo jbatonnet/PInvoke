@@ -50,7 +50,7 @@ namespace PInvoke.Generator
             Console.WriteLine();
 
             CSharpMethodGenerator methodGenerator = new CSharpMethodGenerator();
-            GenerationResult<Method> methodGenerationResult = methodGenerator.Generate(source, library, method);
+           /* GenerationResult<Method> methodGenerationResult = methodGenerator.Generate(source, library, method);
 
             foreach (Structure structure in methodGenerationResult.UsedStructures)
             {
@@ -61,7 +61,7 @@ namespace PInvoke.Generator
                 Console.WriteLine();
             }
 
-            Console.WriteLine(methodGenerationResult.Generated);
+            Console.WriteLine(methodGenerationResult.Generated);*/
 
             Console.WriteLine();
 

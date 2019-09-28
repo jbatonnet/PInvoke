@@ -2,12 +2,14 @@
 using System.IO;
 using System.Linq;
 using System.Text;
+
+using Microsoft.Data.Sqlite;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 using PInvoke.Common.Models;
 using PInvoke.Common.Serialization;
-using PInvoke.Server.Model;
 
 namespace PInvoke.Server.Services
 {
@@ -15,9 +17,51 @@ namespace PInvoke.Server.Services
     {
         public IEnumerable<Source> Sources { get; private set; }
 
+        /*private LiteCollection<BsonDocument> methodsCollection;
+        private LiteCollection<BsonDocument> enumerationsCollection;
+        private LiteCollection<BsonDocument> structuresCollection;*/
+
         public DataService()
         {
             string dataDirectory = @"D:\Projets\C#\PInvoke\Data";
+            string databasePath = Path.Combine(dataDirectory, "Output.db");
+
+            // Setup database
+            SqliteConnection sqliteConnection = new SqliteConnection($"Data Source={databasePath};Version=3;");
+            sqliteConnection.Open();
+
+            
+
+
+
+            // Setup the database
+            /*string databasePath = Path.Combine(dataDirectory, "Output.db");
+            LiteDatabase liteDatabase = new LiteDatabase(databasePath);
+
+            methodsCollection = liteDatabase.GetCollection("methods");
+            methodsCollection.EnsureIndex("Source");
+            methodsCollection.EnsureIndex("Library");
+            methodsCollection.EnsureIndex("Name");
+
+            enumerationsCollection = liteDatabase.GetCollection("enumerations");
+            enumerationsCollection.EnsureIndex("Source");
+            enumerationsCollection.EnsureIndex("Library");
+            enumerationsCollection.EnsureIndex("Name");
+
+            structuresCollection = liteDatabase.GetCollection("structures");
+            structuresCollection.EnsureIndex("Source");
+            structuresCollection.EnsureIndex("Library");
+            structuresCollection.EnsureIndex("Name");*/
+
+
+
+            /*methodsCollection.Query()
+                .GroupBy(BsonExpression.Create("Source"))
+                .Select(BsonExpression.Create("Source"))
+                .ToEnumerable();*/
+
+
+
 
             string[] dataFiles = Directory.GetFiles(dataDirectory);
             List<Source> sources = new List<Source>();
@@ -30,7 +74,7 @@ namespace PInvoke.Server.Services
                 TextReader textReader = new StreamReader(stream, Encoding.UTF8, true, 4096, true);
                 JsonReader jsonReader = new JsonTextReader(textReader);
 
-                SourceInfo sourceInfo = new SourceInfo(stream, jsonReader);
+                //SourceInfo sourceInfo = new SourceInfo(stream, jsonReader);
 
 
                 string json = File.ReadAllText(dataFile);
@@ -42,6 +86,11 @@ namespace PInvoke.Server.Services
 
             Sources = sources.Where(s => s.Libraries.Any());
 
+        }
+
+        public IEnumerable<Source> GetSources()
+        {
+            return null;// methodsCollection.
         }
     }
 }

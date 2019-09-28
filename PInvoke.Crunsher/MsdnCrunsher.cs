@@ -10,25 +10,20 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-using Newtonsoft.Json.Linq;
-
 using PInvoke.Common.Models;
-using PInvoke.Common.Serialization;
 
 namespace PInvoke.Crunsher
 {
-    using Type = Common.Models.Type;
-
     internal class MsdnCrunsher
     {
-        public static void DoWork(string libraryDirectory, string outputDirectory)
+        public static Source Crunsh(string libraryDirectory)
         {
             string[] libraryFiles = Directory.GetFiles(libraryDirectory, "*.mshc").ToArray();
             int parrallelTaskCount = Math.Max(1, Environment.ProcessorCount - 1);
 
             if (Debugger.IsAttached)
             {
-                //libraryFiles = libraryFiles.Take(1).ToArray();
+                libraryFiles = libraryFiles.Take(1).ToArray();
                 //parrallelTaskCount = 1;
             }
 
@@ -408,17 +403,20 @@ namespace PInvoke.Crunsher
 
             Task allTasks = Task.WhenAll(crunshingTasks);
 
-            Task reportingTask = Task.Run(async () =>
+            Task.Run(async () =>
             {
                 while (!allTasks.IsCompleted)
                 {
                     await Task.Delay(750);
 
+                    if (allTasks.IsCompleted)
+                        break;
+
                     int methodCount = libraries.Sum(l => l.Value.Methods.Count());
                     int structureCount = libraries.Sum(l => l.Value.Structures.Count());
                     int enumerationCount = libraries.Sum(l => l.Value.Enumerations.Count());
 
-                    Console.WriteLine($"[MSDN] {crunshedFileCount * 100 / totalFileCount}% - {libraries.Count} libraries, {methodCount} methods, {structureCount} structs, {enumerationCount} enums");
+                    Console.WriteLine($"- {crunshedFileCount * 100 / totalFileCount}% ({libraries.Count} libraries, {methodCount} methods, {structureCount} structs, {enumerationCount} enums)");
                 }
             });
 
@@ -459,18 +457,11 @@ namespace PInvoke.Crunsher
                 library.Methods = new ConcurrentBag<Method>(methods);
             }
 
-            // Dump the data
-            Source source = new Source()
+            return new Source()
             {
                 Name = "MSDN",
                 Libraries = libraries.Values
             };
-
-            JObject result = Serializer.Serialize(source);
-            string json = result.ToString();
-
-            string outputPath = Path.Combine(outputDirectory, "Output_MSDN.json");
-            File.WriteAllText(outputPath, json);
         }
     }
 }

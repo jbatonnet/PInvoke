@@ -6,16 +6,13 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Newtonsoft.Json.Linq;
-
 using PInvoke.Common.Models;
-using PInvoke.Common.Serialization;
 
 namespace PInvoke.Crunsher
 {
     internal class ManCrunsher
     {
-        public static void DoWork(string libraryDirectory, string outputDirectory)
+        public static Source Crunsh(string libraryDirectory)
         {
             ConcurrentQueue<string> manFiles = new ConcurrentQueue<string>(Directory.GetFiles(libraryDirectory, "*.*", SearchOption.AllDirectories));
             ConcurrentDictionary<string, Library> libraries = new ConcurrentDictionary<string, Library>(StringComparer.InvariantCultureIgnoreCase);
@@ -71,18 +68,11 @@ namespace PInvoke.Crunsher
                 library.Methods = new ConcurrentBag<Method>(methods);
             }
 
-            // Dump the data
-            Source source = new Source()
+            return new Source()
             {
                 Name = "man",
                 Libraries = libraries.Values
             };
-
-            JObject result = Serializer.Serialize(source);
-            string json = result.ToString();
-
-            string outputPath = Path.Combine(outputDirectory, "Output_man.json");
-            File.WriteAllText(outputPath, json);
         }
     }
 }
