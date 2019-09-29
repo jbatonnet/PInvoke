@@ -1,7 +1,5 @@
 ﻿using System.Text;
 
-using Newtonsoft.Json.Linq;
-
 namespace PInvoke.Common.Generators.CSharp
 {
     using Models;
@@ -13,9 +11,9 @@ namespace PInvoke.Common.Generators.CSharp
         public CSharpEnumerationGenerator()
         {
         }
-        public CSharpEnumerationGenerator(JObject generationParameters) : base(generationParameters)
+        public CSharpEnumerationGenerator(GenerationParameters generationParameters) : base(generationParameters)
         {
-            NewLineBeforeBracket = generationParameters["NewLineBeforeBracket"]?.Value<bool>() ?? NewLineBeforeBracket;
+            NewLineBeforeBracket = generationParameters.GetValue<bool>("NewLineBeforeBracket", NewLineBeforeBracket);
         }
 
         public override string Generate(Library library, Enumeration enumeration)

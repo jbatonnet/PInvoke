@@ -3,8 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-using Newtonsoft.Json.Linq;
-
 using PInvoke.Common.Models;
 
 namespace PInvoke.Common.Generators.CSharp
@@ -18,11 +16,11 @@ namespace PInvoke.Common.Generators.CSharp
         public CSharpMethodGenerator()
         {
         }
-        public CSharpMethodGenerator(JObject generationParameters) : base(generationParameters)
+        public CSharpMethodGenerator(GenerationParameters generationParameters) : base(generationParameters)
         {
-            UseLowerCaseLibrary = generationParameters["UseLowerCaseLibrary"]?.Value<bool>() ?? UseLowerCaseLibrary;
-            UseLibraryExtension = generationParameters["UseLibraryExtension"]?.Value<bool>() ?? UseLibraryExtension;
-            SetLastError = generationParameters["SetLastError"]?.Value<bool>() ?? SetLastError;
+            UseLowerCaseLibrary = generationParameters.GetValue<bool>("UseLowerCaseLibrary", UseLowerCaseLibrary);
+            UseLibraryExtension = generationParameters.GetValue<bool>("UseLibraryExtension", UseLibraryExtension);
+            SetLastError = generationParameters.GetValue<bool>("SetLastError", SetLastError);
         }
 
         public override string Generate(Library library, Method method)

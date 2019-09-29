@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using PInvoke.Common.Generators;
 using PInvoke.Common.Generators.CSharp;
 using PInvoke.Common.Models;
-using PInvoke.Common.Serialization;
+using PInvoke.Server.Model;
 using PInvoke.Server.Services;
 
 namespace PInvoke.Server.Controllers
@@ -27,25 +27,19 @@ namespace PInvoke.Server.Controllers
         [HttpGet("browse")]
         public IActionResult Browse(string source = null, string library = null)
         {
-            ViewData["Sources"] = dataService.Sources.ToArray();
+            ViewData["Sources"] = dataService.GetSources().ToArray();
 
-            Source selectedSource = null;
+            SourceInfo selectedSource = null;
             if (source != null)
             {
-                selectedSource = dataService.Sources
-                    .Where(s => string.Equals(s.Name, source, StringComparison.InvariantCultureIgnoreCase))
-                    .FirstOrDefault();
-
+                selectedSource = dataService.GetSource(source);
                 ViewData["Source"] = selectedSource;
             }
 
-            Library selectedLibrary;
+            LibraryInfo selectedLibrary;
             if (selectedSource != null && library != null)
             {
-                selectedLibrary = selectedSource.Libraries
-                    .Where(l => string.Equals(l.Name, library, StringComparison.InvariantCultureIgnoreCase))
-                    .FirstOrDefault();
-
+                selectedLibrary = dataService.GetLibrary(source, library);
                 ViewData["Library"] = selectedLibrary;
             }
 
@@ -100,26 +94,17 @@ namespace PInvoke.Server.Controllers
         [HttpGet("generate")]
         public IActionResult Generate(string source = null, string library = null, string element = null)
         {
-            Source selectedSource = dataService.Sources
-                .Where(s => string.Equals(s.Name, source, StringComparison.InvariantCultureIgnoreCase))
-                .FirstOrDefault();
+            SourceInfo selectedSource = dataService.GetSource(source);
 
             if (selectedSource == null)
                 return Redirect("/");
 
-            Library selectedLibrary = selectedSource.Libraries
-                .Where(l => string.Equals(l.Name, library, StringComparison.InvariantCultureIgnoreCase))
-                .FirstOrDefault();
+            LibraryInfo selectedLibrary = dataService.GetLibrary(source, library);
 
             if (selectedLibrary == null)
                 return Redirect("/");
 
-            Method selectedMethod = selectedLibrary.Methods
-                .Where(m => m.Variants != null)
-                .SelectMany(m => m.Variants)
-                .Concat(selectedLibrary.Methods)
-                .Where(m => string.Equals(m.Name, element, StringComparison.InvariantCultureIgnoreCase))
-                .FirstOrDefault();
+            MethodInfo selectedMethod = dataService.GetMethod(source, library, element);
 
             if (selectedMethod == null)
                 return Redirect("/");
@@ -128,7 +113,7 @@ namespace PInvoke.Server.Controllers
             ViewData["Library"] = selectedLibrary;
             ViewData["Method"] = selectedMethod;
 
-            UsageInformation usageInformation = Generator.AnalyzeUsage(selectedSource, selectedLibrary, selectedMethod);
+            //UsageInformation usageInformation = Generator.AnalyzeUsage(selectedSource, selectedLibrary, selectedMethod);
 
             CSharpMethodGenerator methodGenerator = new CSharpMethodGenerator();
             string generationResult = methodGenerator.Generate(selectedLibrary, selectedMethod);

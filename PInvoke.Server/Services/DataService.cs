@@ -1,96 +1,74 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 
-using Microsoft.Data.Sqlite;
-
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-
-using PInvoke.Common.Models;
-using PInvoke.Common.Serialization;
+using PInvoke.Server.Model;
+using PInvoke.Storage;
 
 namespace PInvoke.Server.Services
 {
     public class DataService
     {
-        public IEnumerable<Source> Sources { get; private set; }
-
-        /*private LiteCollection<BsonDocument> methodsCollection;
-        private LiteCollection<BsonDocument> enumerationsCollection;
-        private LiteCollection<BsonDocument> structuresCollection;*/
+        private SqliteStorage sqliteStorage;
 
         public DataService()
         {
             string dataDirectory = @"D:\Projets\C#\PInvoke\Data";
             string databasePath = Path.Combine(dataDirectory, "Output.db");
 
-            // Setup database
-            SqliteConnection sqliteConnection = new SqliteConnection($"Data Source={databasePath};Version=3;");
-            sqliteConnection.Open();
-
-            
-
-
-
-            // Setup the database
-            /*string databasePath = Path.Combine(dataDirectory, "Output.db");
-            LiteDatabase liteDatabase = new LiteDatabase(databasePath);
-
-            methodsCollection = liteDatabase.GetCollection("methods");
-            methodsCollection.EnsureIndex("Source");
-            methodsCollection.EnsureIndex("Library");
-            methodsCollection.EnsureIndex("Name");
-
-            enumerationsCollection = liteDatabase.GetCollection("enumerations");
-            enumerationsCollection.EnsureIndex("Source");
-            enumerationsCollection.EnsureIndex("Library");
-            enumerationsCollection.EnsureIndex("Name");
-
-            structuresCollection = liteDatabase.GetCollection("structures");
-            structuresCollection.EnsureIndex("Source");
-            structuresCollection.EnsureIndex("Library");
-            structuresCollection.EnsureIndex("Name");*/
-
-
-
-            /*methodsCollection.Query()
-                .GroupBy(BsonExpression.Create("Source"))
-                .Select(BsonExpression.Create("Source"))
-                .ToEnumerable();*/
-
-
-
-
-            string[] dataFiles = Directory.GetFiles(dataDirectory);
-            List<Source> sources = new List<Source>();
-
-            // Load all sources
-            foreach (string dataFile in dataFiles)
-            {
-                Stream stream = new FileStream(dataFile, FileMode.Open, FileAccess.Read, FileShare.Read);
-
-                TextReader textReader = new StreamReader(stream, Encoding.UTF8, true, 4096, true);
-                JsonReader jsonReader = new JsonTextReader(textReader);
-
-                //SourceInfo sourceInfo = new SourceInfo(stream, jsonReader);
-
-
-                string json = File.ReadAllText(dataFile);
-                JObject sourceObject = JObject.Parse(json);
-
-                Source sourceValue = Serializer.DeserializeSource(sourceObject);
-                sources.Add(sourceValue);
-            }
-
-            Sources = sources.Where(s => s.Libraries.Any());
-
+            sqliteStorage = new SqliteStorage(databasePath);
         }
 
-        public IEnumerable<Source> GetSources()
+        public SourceInfo GetSource(string source)
         {
-            return null;// methodsCollection.
+            return new SourceInfo()
+            {
+                Name = source,
+                Libraries = sqliteStorage.GetLibraries(source).Select(l => l.Name).ToArray()
+            };
         }
+        public IEnumerable<SourceInfo> GetSources()
+        {
+            LibraryData[] libraries = sqliteStorage.GetLibraries().ToArray();
+
+            return libraries
+                .GroupBy(l => l.Source)
+                .Select(g => new SourceInfo()
+                {
+                    Name = g.Key,
+                    Libraries = g.Select(l => l.Name).ToArray()
+                });
+        }
+
+        public LibraryInfo GetLibrary(string source, string library)
+        {
+            return new LibraryInfo()
+            {
+                Name = library,
+                Methods = sqliteStorage.GetMethods(source, library).Select(m => new MethodInfo() { Name = m.Name }).ToArray()
+            };
+        }
+        public IEnumerable<LibraryInfo> GetLibraries(string source)
+        {
+            MethodData[] methods = sqliteStorage.GetMethods(source).ToArray();
+
+            return methods
+                .GroupBy(m => m.Library)
+                .Select(g => new LibraryInfo()
+                {
+                    Name = g.Key,
+                    Methods = g.Select(m => new MethodInfo() { Name = m.Name, Method = m.Content }).ToArray()
+                });
+        }
+
+        public MethodInfo GetMethod(string source, string library, string method)
+        {
+            return new MethodInfo()
+            {
+                Name = method,
+                Method = sqliteStorage.GetMethod(source, library, method).Content
+            };
+        }
+
     }
 }

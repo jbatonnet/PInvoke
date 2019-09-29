@@ -1,8 +1,6 @@
 ﻿using System.Linq;
 using System.Text;
 
-using Newtonsoft.Json.Linq;
-
 namespace PInvoke.Common.Generators.CSharp
 {
     using Models;
@@ -12,7 +10,7 @@ namespace PInvoke.Common.Generators.CSharp
         public CSharpStructureGenerator()
         {
         }
-        public CSharpStructureGenerator(JObject generationParameters) : base(generationParameters)
+        public CSharpStructureGenerator(GenerationParameters generationParameters) : base(generationParameters)
         {
         }
 

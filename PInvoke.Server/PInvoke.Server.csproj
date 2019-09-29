@@ -10,7 +10,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.8.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="3.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.9.5" />
     <PackageReference Include="Utf8Json" Version="1.3.7" />
   </ItemGroup>
@@ -18,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PInvoke.Common\PInvoke.Common.csproj" />
+    <ProjectReference Include="..\PInvoke.Storage\PInvoke.Storage.csproj" />
   </ItemGroup>
 
 

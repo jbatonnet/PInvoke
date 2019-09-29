@@ -1,8 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
-using Newtonsoft.Json;
-
 namespace PInvoke.Common.Models
 {
     public abstract class Type
@@ -95,7 +93,7 @@ namespace PInvoke.Common.Models
                 parsed = Parse(value);
             }
         }
-        [JsonIgnore] public Type Parsed => parsed;
+        /*[JsonIgnore]*/ public Type Parsed => parsed;
 
         private string raw;
         private Type parsed;

@@ -1,7 +1,5 @@
 ﻿using System;
 
-using Newtonsoft.Json.Linq;
-
 using PInvoke.Common.Models;
 
 namespace PInvoke.Common.Generators.CSharp
@@ -32,13 +30,13 @@ namespace PInvoke.Common.Generators.CSharp
         public CSharpGenerator()
         {
         }
-        public CSharpGenerator(JObject generationParameters)
+        public CSharpGenerator(GenerationParameters generationParameters)
         {
-            Modifier = Enum.TryParse(generationParameters["Modifier"]?.Value<string>() ?? "", out CSharpModifier _modifier) ? _modifier : Modifier;
-            UseFullTypes = generationParameters["UseFullTypes"]?.Value<bool>() ?? UseFullTypes;
-            PointerMode = Enum.TryParse(generationParameters["PointerMode"]?.Value<string>() ?? "", out CSharpPointerMode _pointerMode) ? _pointerMode : PointerMode;
-            EnumerationMode = Enum.TryParse(generationParameters["EnumerationMode"]?.Value<string>() ?? "", out CSharpEnumerationMode _enumerationMode) ? _enumerationMode : EnumerationMode;
-            PreferStringBuilders = generationParameters["PreferStringBuilders"]?.Value<bool>() ?? PreferStringBuilders;
+            Modifier = Enum.TryParse(generationParameters.GetValue<string>("Modifier", ""), out CSharpModifier _modifier) ? _modifier : Modifier;
+            UseFullTypes = generationParameters.GetValue<bool>("UseFullTypes", UseFullTypes);
+            PointerMode = Enum.TryParse(generationParameters.GetValue<string>("PointerMode", ""), out CSharpPointerMode _pointerMode) ? _pointerMode : PointerMode;
+            EnumerationMode = Enum.TryParse(generationParameters.GetValue<string>("EnumerationMode", ""), out CSharpEnumerationMode _enumerationMode) ? _enumerationMode : EnumerationMode;
+            PreferStringBuilders = generationParameters.GetValue<bool>("PreferStringBuilders", PreferStringBuilders);
         }
 
         protected string GetType(ParsedType type)
