@@ -76,6 +76,88 @@ namespace PInvoke.Storage
 
             yield return flushMethods();
         }
+        public IEnumerable<int> Insert(IEnumerable<EnumerationData> enumerations, int batchSize = 1000)
+        {
+            List<string> enumerationQueries = new List<string>(batchSize);
+            int insertedEnumerations = 0;
+
+            int flushEnumerations()
+            {
+                if (enumerationQueries.Count == 0)
+                    return insertedEnumerations;
+
+                string bulkQuery = "INSERT INTO enumerations VALUES " + string.Join(", ", enumerationQueries);
+
+                using (SqliteCommand sqliteCommand = sqliteConnection.CreateCommand())
+                {
+                    sqliteCommand.CommandText = bulkQuery;
+                    sqliteCommand.ExecuteNonQuery();
+                }
+
+                insertedEnumerations += enumerationQueries.Count;
+                enumerationQueries.Clear();
+
+                return insertedEnumerations;
+            }
+
+            IEnumerator<EnumerationData> enumerationEnumerator = enumerations.GetEnumerator();
+
+            while (enumerationEnumerator.MoveNext())
+            {
+                EnumerationData enumeration = enumerationEnumerator.Current;
+
+                byte[] contentBytes = JsonSerializer.SerializeToUtf8Bytes(enumeration.Content);
+                string contentString = Convert.ToBase64String(contentBytes);
+
+                enumerationQueries.Add($"('{enumeration.Source}', '{enumeration.Library}', '{enumeration.Name}', '{contentString}')");
+
+                if (enumerationQueries.Count == enumerationQueries.Capacity)
+                    yield return flushEnumerations();
+            }
+
+            yield return flushEnumerations();
+        }
+        public IEnumerable<int> Insert(IEnumerable<StructureData> structures, int batchSize = 1000)
+        {
+            List<string> structureQueries = new List<string>(batchSize);
+            int insertedStructures = 0;
+
+            int flushStructures()
+            {
+                if (structureQueries.Count == 0)
+                    return insertedStructures;
+
+                string bulkQuery = "INSERT INTO structures VALUES " + string.Join(", ", structureQueries);
+
+                using (SqliteCommand sqliteCommand = sqliteConnection.CreateCommand())
+                {
+                    sqliteCommand.CommandText = bulkQuery;
+                    sqliteCommand.ExecuteNonQuery();
+                }
+
+                insertedStructures += structureQueries.Count;
+                structureQueries.Clear();
+
+                return insertedStructures;
+            }
+
+            IEnumerator<StructureData> structureEnumerator = structures.GetEnumerator();
+
+            while (structureEnumerator.MoveNext())
+            {
+                StructureData structure = structureEnumerator.Current;
+
+                byte[] contentBytes = JsonSerializer.SerializeToUtf8Bytes(structure.Content);
+                string contentString = Convert.ToBase64String(contentBytes);
+
+                structureQueries.Add($"('{structure.Source}', '{structure.Library}', '{structure.Name}', '{contentString}')");
+
+                if (structureQueries.Count == structureQueries.Capacity)
+                    yield return flushStructures();
+            }
+
+            yield return flushStructures();
+        }
 
         public IEnumerable<SourceData> GetSources()
         {
@@ -97,6 +179,26 @@ namespace PInvoke.Storage
                 }
             }
         }
+        public SourceData GetSource(string source)
+        {
+            using (SqliteCommand sqliteCommand = sqliteConnection.CreateCommand())
+            {
+                sqliteCommand.CommandText = "SELECT source FROM methods WHERE source = @source";
+                sqliteCommand.Parameters.AddWithValue("source", source);
+
+                using (SqliteDataReader sqliteDataReader = sqliteCommand.ExecuteReader())
+                {
+                    if (!sqliteDataReader.Read())
+                        return null;
+
+                    return new SourceData()
+                    {
+                        Name = source
+                    };
+                }
+            }
+        }
+
         public IEnumerable<LibraryData> GetLibraries()
         {
             using (SqliteCommand sqliteCommand = sqliteConnection.CreateCommand())
@@ -141,6 +243,28 @@ namespace PInvoke.Storage
                 }
             }
         }
+        public LibraryData GetLibrary(string source, string library)
+        {
+            using (SqliteCommand sqliteCommand = sqliteConnection.CreateCommand())
+            {
+                sqliteCommand.CommandText = "SELECT library FROM methods WHERE source = @source AND library = @library";
+                sqliteCommand.Parameters.AddWithValue("source", source);
+                sqliteCommand.Parameters.AddWithValue("library", library);
+
+                using (SqliteDataReader sqliteDataReader = sqliteCommand.ExecuteReader())
+                {
+                    if (!sqliteDataReader.Read())
+                        return null;
+
+                    return new LibraryData()
+                    {
+                        Source = source,
+                        Name = library
+                    };
+                }
+            }
+        }
+
         public IEnumerable<MethodData> GetMethods(string source)
         {
             using (SqliteCommand sqliteCommand = sqliteConnection.CreateCommand())
@@ -217,6 +341,88 @@ namespace PInvoke.Storage
                         Source = source,
                         Library = library,
                         Name = method,
+                        Content = content
+                    };
+                }
+            }
+        }
+
+        public IEnumerable<EnumerationData> GetEnumerations(string source)
+        {
+            using (SqliteCommand sqliteCommand = sqliteConnection.CreateCommand())
+            {
+                sqliteCommand.CommandText = "SELECT library, name FROM enumerations WHERE source = @source";
+                sqliteCommand.Parameters.AddWithValue("source", source);
+
+                using (SqliteDataReader sqliteDataReader = sqliteCommand.ExecuteReader())
+                {
+                    while (sqliteDataReader.Read())
+                    {
+                        string library = sqliteDataReader.GetString(0);
+                        string name = sqliteDataReader.GetString(1);
+
+                        yield return new EnumerationData()
+                        {
+                            Source = source,
+                            Library = library,
+                            Name = name
+                        };
+                    }
+                }
+            }
+        }
+        public IEnumerable<EnumerationData> GetEnumerations(string source, string library)
+        {
+            using (SqliteCommand sqliteCommand = sqliteConnection.CreateCommand())
+            {
+                sqliteCommand.CommandText = "SELECT name, content FROM enumerations WHERE source = @source AND library = @library";
+                sqliteCommand.Parameters.AddWithValue("source", source);
+                sqliteCommand.Parameters.AddWithValue("library", library);
+
+                using (SqliteDataReader sqliteDataReader = sqliteCommand.ExecuteReader())
+                {
+                    while (sqliteDataReader.Read())
+                    {
+                        string name = sqliteDataReader.GetString(0);
+
+                        string contentString = sqliteDataReader.GetString(1);
+                        byte[] contentBytes = Convert.FromBase64String(contentString);
+                        Enumeration content = JsonSerializer.Deserialize<Enumeration>(contentBytes);
+
+                        yield return new EnumerationData()
+                        {
+                            Source = source,
+                            Library = library,
+                            Name = name,
+                            Content = content
+                        };
+                    }
+                }
+            }
+        }
+        public EnumerationData GetEnumeration(string source, string library, string enumeration)
+        {
+            using (SqliteCommand sqliteCommand = sqliteConnection.CreateCommand())
+            {
+                sqliteCommand.CommandText = "SELECT content FROM enumerations WHERE source = @source AND library = @library AND name = @name";
+                sqliteCommand.Parameters.AddWithValue("source", source);
+                sqliteCommand.Parameters.AddWithValue("library", library);
+                sqliteCommand.Parameters.AddWithValue("name", enumeration);
+
+                using (SqliteDataReader sqliteDataReader = sqliteCommand.ExecuteReader())
+                {
+                    if (!sqliteDataReader.Read())
+                        return null;
+
+                    string contentString = sqliteDataReader.GetString(1);
+                    byte[] contentBytes = Convert.FromBase64String(contentString);
+                    Enumeration content = JsonSerializer.Deserialize<Enumeration>(contentBytes);
+
+                    return new EnumerationData()
+                    {
+                        Source = source,
+                        Library = library,
+                        Name = enumeration,
                         Content = content
                     };
                 }

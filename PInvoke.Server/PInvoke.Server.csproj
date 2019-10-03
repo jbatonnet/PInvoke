@@ -7,6 +7,17 @@
     <ApplicationInsightsAnnotationResourceId>/subscriptions/f381102f-1e83-4493-8e92-e041bfd50c02/resourcegroups/PInvoke/providers/microsoft.insights/components/PInvoke-ApplicationInsights</ApplicationInsightsAnnotationResourceId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="Program.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\Data\Output.db" Link="Output.db" />
+    <Content Include="Program.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 
   <ItemGroup>
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.8.0" />

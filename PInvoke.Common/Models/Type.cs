@@ -142,6 +142,8 @@ namespace PInvoke.Common.Models
             // Strings
             if (lowerName == "cwstr")
                 return new StringType() { WideCharacters = true };
+            if (lowerName == "wstr")
+                return new StringType() { WideCharacters = true };
             if (lowerName == "cstr")
                 return new StringType() { WideCharacters = false };
             if (lowerName == "str")
@@ -150,6 +152,8 @@ namespace PInvoke.Common.Models
             // Basic types
             switch (lowerName)
             {
+                case "cvoid":
+                    return new PointerType() { Target = new BasicType() { Type = BasicTypeValues.Void } };
                 case "void":
                     return new BasicType() { Type = BasicTypeValues.Void };
                 case "bool":
@@ -169,6 +173,7 @@ namespace PInvoke.Common.Models
                     return new BasicType() { Type = BasicTypeValues.Short };
                 case "uint":
                 case "uint32":
+                case "size_t":
                     return new BasicType() { Type = BasicTypeValues.UInteger };
                 case "int":
                 case "dword":

@@ -2,10 +2,11 @@
 using System.Linq;
 
 using Microsoft.AspNetCore.Mvc;
+
 using PInvoke.Common.Generators;
 using PInvoke.Common.Generators.CSharp;
 using PInvoke.Common.Models;
-using PInvoke.Server.Model;
+using PInvoke.Server.Models;
 using PInvoke.Server.Services;
 
 namespace PInvoke.Server.Controllers
@@ -36,7 +37,7 @@ namespace PInvoke.Server.Controllers
                 ViewData["Source"] = selectedSource;
             }
 
-            LibraryInfo selectedLibrary;
+            Library selectedLibrary;
             if (selectedSource != null && library != null)
             {
                 selectedLibrary = dataService.GetLibrary(source, library);
@@ -49,7 +50,7 @@ namespace PInvoke.Server.Controllers
         [HttpGet("search")]
         public IActionResult Search(string name = null, string source = null)
         {
-            ViewData["Name"] = name;
+            /*ViewData["Name"] = name;
             ViewData["Sources"] = dataService.Sources.ToArray();
 
             if (name != null)
@@ -86,7 +87,7 @@ namespace PInvoke.Server.Controllers
 
                     ViewData["Structures"] = structures;
                 }
-            }
+            }*/
 
             return View();
         }
@@ -99,12 +100,12 @@ namespace PInvoke.Server.Controllers
             if (selectedSource == null)
                 return Redirect("/");
 
-            LibraryInfo selectedLibrary = dataService.GetLibrary(source, library);
+            Library selectedLibrary = dataService.GetLibrary(source, library);
 
             if (selectedLibrary == null)
                 return Redirect("/");
 
-            MethodInfo selectedMethod = dataService.GetMethod(source, library, element);
+            Method selectedMethod = selectedLibrary.Methods.FirstOrDefault(m => m.Name.Equals(element, StringComparison.InvariantCultureIgnoreCase));
 
             if (selectedMethod == null)
                 return Redirect("/");
@@ -113,7 +114,7 @@ namespace PInvoke.Server.Controllers
             ViewData["Library"] = selectedLibrary;
             ViewData["Method"] = selectedMethod;
 
-            //UsageInformation usageInformation = Generator.AnalyzeUsage(selectedSource, selectedLibrary, selectedMethod);
+            UsageInformation usageInformation = Generator.AnalyzeUsage(null, selectedLibrary, selectedMethod);
 
             CSharpMethodGenerator methodGenerator = new CSharpMethodGenerator();
             string generationResult = methodGenerator.Generate(selectedLibrary, selectedMethod);

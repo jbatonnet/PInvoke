@@ -10,7 +10,6 @@ using Newtonsoft.Json.Linq;
 using PInvoke.Common.Generators;
 using PInvoke.Common.Generators.CSharp;
 using PInvoke.Common.Models;
-using PInvoke.Common.Serialization;
 using PInvoke.Server.Services;
 
 namespace PInvoke.Server.Controllers
@@ -40,7 +39,7 @@ namespace PInvoke.Server.Controllers
             this.dataService = dataService;
         }
 
-        [HttpGet]
+        /*[HttpGet]
         public IActionResult Search(string name, string source = null, SearchType type = SearchType.All)
         {
             name = name.Trim();
@@ -159,7 +158,7 @@ namespace PInvoke.Server.Controllers
             
             return generationResult;
         }
-
+        */
 
         [HttpPost]
         public IActionResult Generate()

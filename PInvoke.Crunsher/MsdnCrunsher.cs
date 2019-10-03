@@ -23,7 +23,7 @@ namespace PInvoke.Crunsher
 
             if (Debugger.IsAttached)
             {
-                libraryFiles = libraryFiles.Take(1).ToArray();
+                //libraryFiles = libraryFiles.Take(1).ToArray();
                 //parrallelTaskCount = 1;
             }
 

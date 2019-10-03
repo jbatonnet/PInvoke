@@ -70,7 +70,7 @@ namespace PInvoke.Common.Generators
             if (baseType == null)
                 return;
 
-            Structure structure = source.Libraries
+            Structure structure = (source?.Libraries ?? new[] { library })
                 .SelectMany(l => l.Structures)
                 .FirstOrDefault(s => string.Equals(s.Name, baseType.Name, StringComparison.InvariantCultureIgnoreCase));
 

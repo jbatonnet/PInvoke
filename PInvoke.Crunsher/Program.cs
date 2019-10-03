@@ -71,6 +71,8 @@ namespace PInvoke.Crunsher
             SqliteStorage sqliteStorage = new SqliteStorage(databasePath);
 
             int insertedMethods = 0;
+            int insertedEnumerations = 0;
+            int insertedStructures = 0;
 
             Task insertionTask = Task.Run(() =>
             {
@@ -79,10 +81,27 @@ namespace PInvoke.Crunsher
                                                   from m in l.Methods
                                                   select new MethodData() { Source = s.Name, Library = l.Name, Name = m.Name, Content = m };
 
-                IEnumerable<int> insertionProgress = sqliteStorage.Insert(methods);
+                IEnumerable<EnumerationData> enumerations = from s in sources
+                                                            from l in s.Libraries
+                                                            from e in l.Enumerations
+                                                            select new EnumerationData() { Source = s.Name, Library = l.Name, Name = e.Name, Content = e };
 
+                IEnumerable<StructureData> structures = from s in sources
+                                                        from l in s.Libraries
+                                                        from c in l.Structures
+                                                        select new StructureData() { Source = s.Name, Library = l.Name, Name = c.Name, Content = c };
+
+                IEnumerable<int> insertionProgress = sqliteStorage.Insert(methods);
                 foreach (int progress in insertionProgress)
                     insertedMethods = progress;
+
+                insertionProgress = sqliteStorage.Insert(enumerations);
+                foreach (int progress in insertionProgress)
+                    insertedEnumerations = progress;
+
+                insertionProgress = sqliteStorage.Insert(structures);
+                foreach (int progress in insertionProgress)
+                    insertedStructures = progress;
             });
 
             Task.Run(async () =>
@@ -92,6 +111,18 @@ namespace PInvoke.Crunsher
                     .SelectMany(l => l.Methods)
                     .Count();
 
+                int enumerationCount = sources
+                    .SelectMany(s => s.Libraries)
+                    .SelectMany(l => l.Enumerations)
+                    .Count();
+
+                int structureCount = sources
+                    .SelectMany(s => s.Libraries)
+                    .SelectMany(l => l.Structures)
+                    .Count();
+
+                int totalCount = methodCount + enumerationCount + structureCount;
+
                 while (!insertionTask.IsCompleted)
                 {
                     await Task.Delay(750);
@@ -99,7 +130,8 @@ namespace PInvoke.Crunsher
                     if (insertionTask.IsCompleted)
                         break;
 
-                    Console.WriteLine($"- {insertedMethods * 100 / methodCount}% ({insertedMethods} methods)");
+                    int insertedCount = insertedMethods + insertedEnumerations + insertedStructures;
+                    Console.WriteLine($"- {insertedCount * 100 / totalCount}% ({insertedMethods} methods, {insertedEnumerations} enumerations, {insertedStructures} structures)");
                 }
             });
 

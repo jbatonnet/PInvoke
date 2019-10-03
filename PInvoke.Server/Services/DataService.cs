@@ -1,74 +1,61 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-using PInvoke.Server.Model;
+using PInvoke.Common.Models;
+using PInvoke.Server.Models;
 using PInvoke.Storage;
 
 namespace PInvoke.Server.Services
 {
     public class DataService
     {
-        private SqliteStorage sqliteStorage;
+        private SqliteStorage storage;
+
+        private SourceInfo[] sources;
 
         public DataService()
         {
-            string dataDirectory = @"D:\Projets\C#\PInvoke\Data";
-            string databasePath = Path.Combine(dataDirectory, "Output.db");
+            storage = new SqliteStorage("Output.db");
 
-            sqliteStorage = new SqliteStorage(databasePath);
-        }
-
-        public SourceInfo GetSource(string source)
-        {
-            return new SourceInfo()
-            {
-                Name = source,
-                Libraries = sqliteStorage.GetLibraries(source).Select(l => l.Name).ToArray()
-            };
-        }
-        public IEnumerable<SourceInfo> GetSources()
-        {
-            LibraryData[] libraries = sqliteStorage.GetLibraries().ToArray();
-
-            return libraries
+            // Preload source
+            sources = storage.GetLibraries()
                 .GroupBy(l => l.Source)
                 .Select(g => new SourceInfo()
                 {
                     Name = g.Key,
                     Libraries = g.Select(l => l.Name).ToArray()
-                });
+                })
+                .ToArray();
         }
 
-        public LibraryInfo GetLibrary(string source, string library)
+        public SourceInfo GetSource(string source) => sources.FirstOrDefault(s => s.Name.Equals(source, StringComparison.InvariantCultureIgnoreCase));
+        public IEnumerable<SourceInfo> GetSources() => sources;
+
+        public Library GetLibrary(string source, string library)
         {
-            return new LibraryInfo()
+            return new Library()
             {
                 Name = library,
-                Methods = sqliteStorage.GetMethods(source, library).Select(m => new MethodInfo() { Name = m.Name }).ToArray()
+                Methods = storage.GetMethods(source, library).Select(m => m.Content).ToArray(),
+                Enumerations = Enumerable.Empty<Enumeration>(),
+                Structures = Enumerable.Empty<Structure>()
             };
         }
-        public IEnumerable<LibraryInfo> GetLibraries(string source)
+        public IEnumerable<Library> GetLibraries(string source)
         {
-            MethodData[] methods = sqliteStorage.GetMethods(source).ToArray();
+            MethodData[] methods = storage.GetMethods(source).ToArray();
 
             return methods
                 .GroupBy(m => m.Library)
-                .Select(g => new LibraryInfo()
+                .Select(g => new Library()
                 {
                     Name = g.Key,
-                    Methods = g.Select(m => new MethodInfo() { Name = m.Name, Method = m.Content }).ToArray()
+                    Methods = g.Select(m => m.Content).ToArray(),
+                    Enumerations = Enumerable.Empty<Enumeration>(),
+                    Structures = Enumerable.Empty<Structure>()
                 });
         }
-
-        public MethodInfo GetMethod(string source, string library, string method)
-        {
-            return new MethodInfo()
-            {
-                Name = method,
-                Method = sqliteStorage.GetMethod(source, library, method).Content
-            };
-        }
-
     }
 }

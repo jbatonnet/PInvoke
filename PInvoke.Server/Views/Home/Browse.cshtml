@@ -1,8 +1,8 @@
 ﻿@{
     ViewData["Title"] = "Browse";
 
-    Source[] sources = ViewData["Sources"] as Source[];
-    Source selectedSource = ViewData["Source"] as Source;
+    SourceInfo[] sources = ViewData["Sources"] as SourceInfo[];
+    SourceInfo selectedSource = ViewData["Source"] as SourceInfo;
     Library selectedLibrary = ViewData["Library"] as Library;
 }
 
@@ -18,11 +18,11 @@
     @if (selectedSource == null)
     {
         <div class="list-group">
-            @foreach (Source source in sources)
+            @foreach (SourceInfo source in sources)
             {
                 <a asp-route-source="@source.Name" class="list-group-item list-group-item-action">
                     <strong>@source.Name</strong>
-                    <em>@source.Libraries.Count() libraries, @source.Libraries.Sum(l => l.Methods.Count()) methods, @source.Libraries.Sum(l => l.Enumerations.Count()) enumerations, @source.Libraries.Sum(l => l.Structures.Count()) structures</em>
+                    <em>@source.Libraries.Count() libraries</em>
                 </a>
             }
         </div>
@@ -32,7 +32,7 @@
         <ul class="list-group">
             <li class="list-group-item">
                 <strong>@selectedSource.Name</strong>
-                <em>@selectedSource.Libraries.Count() libraries, @selectedSource.Libraries.Sum(l => l.Methods.Count()) methods, @selectedSource.Libraries.Sum(l => l.Enumerations.Count()) enumerations, @selectedSource.Libraries.Sum(l => l.Structures.Count()) structures</em>
+                <em>@selectedSource.Libraries.Count() libraries</em>
             </li>
         </ul>
 
@@ -40,11 +40,11 @@
         <div class="list-group">
             @if (selectedLibrary == null)
             {
-                @foreach (Library library in selectedSource.Libraries.OrderBy(l => l.Name))
+                @foreach (string library in selectedSource.Libraries.OrderBy(l => l))
                 {
-                    <a asp-route-source="@selectedSource.Name" asp-route-library="@library.Name" class="list-group-item list-group-item-action">
-                        <strong>@library.Name</strong>
-                        <em>@library.Methods.Count() methods, @library.Enumerations.Count() enumerations, @library.Structures.Count() structures</em>
+                    <a asp-route-source="@selectedSource.Name" asp-route-library="@library" class="list-group-item list-group-item-action">
+                        <strong>@library</strong>
+                        @*<em>@library.Methods.Count() methods, @library.Enumerations.Count() enumerations, @library.Structures.Count() structures</em>*@
                     </a>
                 }
             }
