@@ -24,6 +24,12 @@ namespace PInvoke.Server
             services.AddControllersWithViews();
             services.AddRazorPages();
 
+#if DEBUG
+            services.AddApplicationInsightsTelemetry("00000000-0000-0000-0000-000000000000");
+#else
+            services.AddApplicationInsightsTelemetry();
+#endif
+
             services.AddSingleton(new DataService());
         }
 

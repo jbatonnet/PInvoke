@@ -1,8 +1,8 @@
-FROM microsoft/dotnet:2.2-aspnetcore-runtime-stretch-slim-arm32v7 AS base
+FROM mcr.microsoft.com/dotnet/core/aspnet:3.0-buster-slim-arm32v7 AS base
 WORKDIR /app
 EXPOSE 80
 
-FROM microsoft/dotnet:2.2-sdk AS build
+FROM mcr.microsoft.com/dotnet/core/sdk:3.0 AS build
 WORKDIR /src
 COPY ["PInvoke.Server/PInvoke.Server.csproj", "PInvoke.Server/"]
 RUN dotnet restore "PInvoke.Server/PInvoke.Server.csproj"
